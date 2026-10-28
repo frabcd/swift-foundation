@@ -1,0 +1,46 @@
+name: Empty list regression validation
+on:
+  push:
+    branches: [codex/validate-url-template-empty-list]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    container: swiftlang/swift:nightly-6.4.x-noble
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 3
+      - name: Toolchain
+        run: swift --version
+      - uses: actions/cache@v4
+        with:
+          path: .build
+          key: empty-list-swift64-${{ hashFiles('Package.swift') }}-${{ github.sha }}
+          restore-keys: empty-list-swift64-${{ hashFiles('Package.swift') }}-
+      - name: Baseline suite
+        shell: bash
+        run: |
+          set -o pipefail
+          cp Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift /tmp/regression-tests.swift
+          git show e4049b2d:Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift > Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
+          swift test --parallel --jobs 2 2>&1 | tee /tmp/baseline.log
+          cp /tmp/regression-tests.swift Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
+      - name: Regression must fail before fix
+        shell: bash
+        run: |
+          set -o pipefail
+          set +e
+          swift test --jobs 2 --filter 'emptyListIsUndefined|listContainingEmptyStringIsDefined|urlWithEmptyList' 2>&1 | tee /tmp/regression.log
+          result=${PIPESTATUS[0]}
+          set -e
+          test "$result" -ne 0
+          grep -q 'Expectation failed' /tmp/regression.log
+          grep -q 'emptyListIsUndefined' /tmp/regression.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swift-test-evidence
+          path: /tmp/*.log
