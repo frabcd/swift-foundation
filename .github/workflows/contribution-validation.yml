@@ -1,0 +1,39 @@
+name: Empty list regression validation
+on:
+  push:
+    branches: [codex/validate-empty-list-6.4.x]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    container: swiftlang/swift:nightly-6.4.x-noble
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Toolchain
+        run: swift --version
+      - uses: actions/cache@v4
+        with:
+          path: .build
+          key: empty-list-swift64-${{ hashFiles('Package.swift') }}-${{ github.sha }}
+          restore-keys: empty-list-swift64-${{ hashFiles('Package.swift') }}-
+      - name: Focused regression and URI template tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --jobs 2 --filter 'emptyListIsUndefined|listContainingEmptyStringIsDefined|urlWithEmptyList' 2>&1 | tee /tmp/regression.log
+          swift test --skip-build --filter 'TemplateTests|ExpressionTests|PercentEncodingTests|ValueTests' 2>&1 | tee /tmp/template-tests.log
+      - name: Full suite
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --parallel --jobs 2 2>&1 | tee /tmp/full-suite.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swift-test-evidence
+          path: /tmp/*.log
+
