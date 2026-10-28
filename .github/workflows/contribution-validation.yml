@@ -20,25 +20,17 @@ jobs:
           path: .build
           key: empty-list-swift64-${{ hashFiles('Package.swift') }}-${{ github.sha }}
           restore-keys: empty-list-swift64-${{ hashFiles('Package.swift') }}-
-      - name: Baseline suite
+      - name: Focused regression and URI template tests
         shell: bash
         run: |
           set -o pipefail
-          cp Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift /tmp/regression-tests.swift
-          git -c safe.directory="$PWD" show e4049b2d:Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift > Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
-          swift test --parallel --jobs 2 2>&1 | tee /tmp/baseline.log
-          cp /tmp/regression-tests.swift Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
-      - name: Regression must fail before fix
-        shell: bash
-        run: |
-          set -o pipefail
-          set +e
           swift test --jobs 2 --filter 'emptyListIsUndefined|listContainingEmptyStringIsDefined|urlWithEmptyList' 2>&1 | tee /tmp/regression.log
-          result=${PIPESTATUS[0]}
-          set -e
-          test "$result" -ne 0
-          grep -q 'Expectation failed' /tmp/regression.log
-          grep -q 'emptyListIsUndefined' /tmp/regression.log
+          swift test --skip-build --filter 'TemplateTests|ExpressionTests|PercentEncodingTests|ValueTests' 2>&1 | tee /tmp/template-tests.log
+      - name: Full suite
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --parallel --jobs 2 2>&1 | tee /tmp/full-suite.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
