@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 3
+          fetch-depth: 0
       - name: Toolchain
         run: swift --version
       - uses: actions/cache@v4
@@ -25,7 +25,7 @@ jobs:
         run: |
           set -o pipefail
           cp Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift /tmp/regression-tests.swift
-          git show e4049b2d:Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift > Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
+          git -c safe.directory="$PWD" show e4049b2d:Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift > Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
           swift test --parallel --jobs 2 2>&1 | tee /tmp/baseline.log
           cp /tmp/regression-tests.swift Tests/FoundationEssentialsTests/URITemplatingTests/URLTemplate_TemplateTests.swift
       - name: Regression must fail before fix
